@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 
-{% block title %}Prodict Detail
-{% block content %}
+{% block title %}Product Detail
+{% endblock %}
 
 {% block content %}
     <div class="row">
@@ -16,12 +16,13 @@
                 </span>
                 {{product.price}}
             </p>
-            <form action="" method="post">
+            <form action="{% url 'cart:product_add' product.id %}" method="post">
+                {{add_to_cart}}
                 {% csrf_token %}
                 <input type="submit" class="btn btn-primary btn-sm" value="Add to Cart">
             </form>
             <h5>
-                <span class="badge badge-secondary">Desciption</span>
+                <span class="badge badge-secondary">Description</span>
                 {{product.description|linebreaks}}
             </h5>
         </div>

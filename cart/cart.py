@@ -3,16 +3,18 @@ from decimal import Decimal
 from django.conf import settings
 
 from shop.models import Product
+from coupon.models import Coupon
 
 
 class Cart(object):
     def __init__(self, request):
         # 초기화 작업
-        self.sesssion = request.session # 장고에서 사용한 request
-        cart = self.sesssion.get(settings.CART_ID) # 기존에 카드 정보를 가져오는 것
+        self.session = request.session # 장고에서 사용한 request
+        cart = self.session.get(settings.CART_ID) # 기존에 카드 정보를 가져오는 것
         if not cart:
-            cart = self.sesssion[settings.CART_ID] = {}
+            cart = self.session[settings.CART_ID] = {}
         self.cart = cart
+        self.coupon_id = self.session.get('coupon_id')
 
     def __len__(self):
         # iterater 같은 걸 쓸때 몇개가 들어있는지 알 수 있는 것
@@ -23,7 +25,7 @@ class Cart(object):
         # for문 같은 것 사용시 어떤 요소를 건네줄지
         product_ids = self.cart.keys()
 
-        products = Product.object.filter(id__in=product_ids)
+        products = Product.objects.filter(id__in=product_ids)
         # filter는 쿼리문에서 where에 해당함 id라고 하면 id만 달라는 것 id__in은 id가 product_ids에 해당하는 것을 반환
 
         for product in products:
@@ -51,8 +53,8 @@ class Cart(object):
         self.save() # 업데이트 정보 저장
 
     def save(self):
-        self.sesssion[settings.CART_ID] = self.cart # 세션에 업데이트 정보 저장
-        self.sesssion.modified = True # 제품 정보가 변경 됐을 때
+        self.session[settings.CART_ID] = self.cart # 세션에 업데이트 정보 저장
+        self.session.modified = True # 제품 정보가 변경 됐을 때
 
     def remove(self, product):
         product_id = str(product.id)
@@ -61,8 +63,25 @@ class Cart(object):
             self.save()
 
     def clear(self):
-        self.sesssion[settings.CART_ID] = {} # 아래 줄 있어서 save를 따로 해주지않음
-        self.sesssion.modified = True
+        self.session[settings.CART_ID] = {} # 아래 줄 있어서 save를 따로 해주지않음
+        self.session['coupon_id'] = None
+        self.session.modified = True
 
     def get_product_total(self):
-        return sum(item['price']*item['quantity'] for item in self.cart.values())
+        return sum(Decimal(item['price'])*item['quantity'] for item in self.cart.values())
+
+    @property
+    # property 어노테이션을 사용
+    def coupon(self):
+        if self.coupon_id:
+            return Coupon.objects.get(id=self.coupon_id)
+        return None
+
+    def get_discount_total(self):
+        if self.coupon: # 위에 property 때문에 coupon이라는 것을 변수처럼 쓸 수 있다.
+            if self.get_product_total() >= self.coupon.amount:
+                return self.coupon.amount
+        return Decimal(0)
+
+    def get_total_price(self):
+        return self.get_product_total() - self.get_discount_total()
