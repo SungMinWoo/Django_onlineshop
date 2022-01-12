@@ -147,3 +147,7 @@ CART_ID = 'cart_item'
 
 # IAMPORT_KEY = IAMPORT_KEYS
 # IAMPORT_SECRET = SECRET_IAMPROT_KEY
+
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, 'static')
+]

@@ -18,8 +18,8 @@ def order_create(request): # request = 요청 정보
             order = form.save()
             if cart.coupon:
                 order.coupon = cart.coupon
-                #order.discount = cart.coupon.amount
-                order.discount = cart.get_discount_total()
+                #order.discount = cart.coupon.amount # 이렇게 작성해도됨
+                order.discount = cart.get_discount_total() # 얘가 더 안전하고 정확한 로직
                 order.save()
             for item in cart:
                 OrderItem.objects.create(order=order, product=item['product'], price=item['price'], quantity=item['quantity'])
@@ -29,3 +29,78 @@ def order_create(request): # request = 요청 정보
         form = OrderCreateForm() # 여기에 입력 받음
     # 사용자 입력을 잘못 받았을 때 오류를 반환하고 끝내지 않고 내려오게만들려고 return을 밖으로
     return render(request, 'order/create.html', {'cart':cart, 'form':form})
+# JS가 동작하지 않는 환경에서도 주문은 가능해야한다.
+
+
+def order_complete(request): # 자바스크립트를 사용할 시
+    order_id = request.GET.get('order_id') # 시큐어 코딩 어떤 정보가 올지 모르니 한번 걸러주는 것 지금은 안씀
+    # order = Order.objects.get(id=order_id)
+    order = get_object_or_404(Order, id=order_id) # order가 있으면 밑으로 내려가고 없으면 404로 감
+    return render(request, 'order/create.html', {'order':order})
+
+
+# 에이작스
+from django.views.generic.base import View # class형으로 만들때 하는 기본적인 view
+from django.http import JsonResponse
+
+
+class OrderCreateAjaxView(View): # 화면이 변환없이 자바스크립트로 변환이 될때 자바스크립트를 사용하지 않으면 위에 order가 실행됨
+    def post(self, request, *args, **kwargs): # post나 get이나 if로 할필요없이 post로 준비해두면된다.
+        if not request.user.is_authenticated:
+            return JsonResponse({"authenticated":False}, status=403)
+
+        cart = Cart(request)
+        form = OrderCreateForm(request.POST)
+
+        if form.is_valid():
+            order = form.save(commit=False) # 괄호안에 commit=False를 넣으면 쿼리가 날아가진않음
+            if cart.coupon:
+                order.coupon = cart.coupon
+                order.discount = cart.coupon.amount
+            order = form.save()
+            for item in cart:
+                OrderItem.objects.create(order=order, product=item['product'], price=item['price'],
+                                         quantity=item['quantity'])
+            cart.clear()
+            data = {
+                "order_id": order.id
+            }
+            return JsonResponse(data)
+        else:
+            return JsonResponse({}, status=401)
+
+
+class OrderImpAjaxView(View): # 후처리
+    def post(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return JsonResponse({"authenticated":False}, status=403)
+
+        order_id = request.POST.get('order_id')
+        order = Order.objects.get(id=order_id)
+        merchant_id = request.POST.get('merchant_id')
+        imp_id = request.POST.get('imp_id')
+        amount = request.POST.get('amount')
+
+        try:
+            trans = OrderTransaction.objects.get(
+                order=order,
+                merchant_order_id=merchant_id,
+                amount=amount
+            )
+        except:
+            trans = None
+
+        if trans is not None:
+            trans.transaction_id = imp_id
+            trans.success = True
+            trans.save()
+            order.paid = True
+            order.save()
+
+            data = {
+                "works": True
+            }
+
+            return JsonResponse(data)
+        else:
+            return JsonResponse({}, status=401)
