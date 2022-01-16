@@ -1,0 +1,49 @@
+{% extends 'admin/base_site.html' %}
+
+{% block title %}
+    Order {{order.id}}
+<!-- 오더 몇번의 디테일이다, 뒤에는 객체를 불러오는 것-->
+{% endblock %}
+
+{% block breadcrumbs %}
+<!--빵 부스러기 지금 어디 페이지라고 알려주는 것 페이지 네비게이터 같은 느낌-->
+    <div class="breadcrumbs">
+        <a href="{% url 'admin:index' %}">Home</a> &rsaquo;
+        <a href="{% url 'admin:order_order_changelist' %}">Orders</a> &rsaquo;
+        <a href="{% url 'admin:order_order_change' order.id %}">Order {{order.id}}</a> &rsaquo;
+        Detail
+    </div>
+{% endblock %}
+
+
+{% block content %}
+    <h1>Order {{order.id}}</h1>
+    <ul class="object-tools">
+        <li>
+            <a href="#" onclick="window.print();">Print order</a>
+<!--            자바스크립트 코드 현제 페이지에 대한 출력창 크롬이나 브라우저에서 띄워주는 것-->
+        </li>
+    </ul>
+    <table>
+        <tr>
+            <th>Created</th>
+            <td>{{order.created}}</td>
+        </tr>
+        <tr>
+            <th>Customer</th>
+            <td>{{order.first_name}} {{order.last_name}}</td>
+        </tr>
+        <tr>
+            <th>E-mail</th>
+            <td>{{order.email}}</td>
+        </tr>
+        <tr>
+            <th>Address</th>
+            <td>{{order.address}} {{order.postal_code}} {{order.city}}</td>
+        </tr>
+        <tr>
+            <th>Total amount</th>
+            <td>{{order.get_total_price}}</td>
+        </tr>
+    </table>
+{% endblock %}

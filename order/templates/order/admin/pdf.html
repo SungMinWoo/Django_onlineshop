@@ -1,0 +1,53 @@
+<html>
+<body>
+    <h1>Django onlineshop</h1>
+    <p>
+        Invoice no. {{ order.id }}<br/>
+<!--        br/ = 템플릿 필터, xhtml 호환 코드 없어도됨-->
+        <span class="secondary">{{ order.created|date:"M d, Y" }}</span>
+<!--        년월일 출력-->
+    </p>
+    <h3>{% if order.paid %}Payment Accepted{% else %}Pending payment{% endif %}</h3>
+    <p>
+        {{ order.first_name }} {{ order.last_name }}<br>
+        {{ order.email }}<br>
+        {{ order.address }}<br>
+        {{ order.postal_code }}, {{ order.city }}
+    </p>
+
+    <h3>Product List</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Product</th>
+                <th>Price</th>
+                <th>Quantity</th>
+                <th>Cost</th>
+            </tr>
+        </thead>
+        <tbody>
+<!--        상품 상세 정보-->
+        {% for item in order.items.all %}
+            <tr class="row{% cycle "1" "2" %}">
+<!--        cycle은 1과 2를 번갈아가면서 출력해줌-->
+                <td>{{ item.product.name }}</td>
+                <td class="num">${{ item.price }}</td>
+                <td class="num">{{ item.quantity }}</td>
+                <td class="num">${{ item.get_item_price }}</td>
+            </tr>
+        {% endfor %}
+            {% if order.coupon %}
+<!--        쿠폰이 있다면-->
+            <tr class="discount">
+                <td colspan="3">Discount</td>
+                <td class="num">${{ order.discount }}</td>
+            </tr>
+            {% endif %}
+            <tr class="total">
+                <td colspan="3">Total</td>
+                <td class="num">${{ order.get_total_price }}</td>
+            </tr>
+        </tbody>
+    </table>
+</body>
+</html>

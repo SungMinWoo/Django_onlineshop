@@ -32,6 +32,33 @@ def order_create(request): # request = 요청 정보
 # JS가 동작하지 않는 환경에서도 주문은 가능해야한다.
 
 
+from django.contrib.admin.views.decorators import staff_member_required
+
+
+@staff_member_required
+def admin_order_detail(request, order_id): # order_id는 urls.py에서 받아오는 것
+    order = get_object_or_404(Order, id=order_id)
+    return render(request, 'order/admin/detail.html', {'order':order})
+
+# pdf를 위한 임포트
+# from django.conf import settings
+# from django.http import HttpResponse
+# from django.template.loader import render_to_string
+# import weasyprint
+
+
+# @staff_member_required # 어드민 관리자만 들어갈 수 있는 뷰
+# def admin_order_pdf(request, order_id):
+#     order = get_object_or_404(Order, id=order_id)
+#     html = render_to_string('order/admin/pdf.html', {'order':order})
+#     response = HttpResponse(content_type='application/pdf')
+#     response['Content-Disposition'] = 'filename=order_{}.pdf'.format(order.id)
+#     weasyprint.HTML(string=html).write_pdf(response, stylesheets=[weasyprint.CSS(settings.STATICFILES_DIRS[0]+'/css/pdf.css')])
+#     # response는 파일, stylesheets html을 파일로 변환해주는 거 css도 포함해서 파일로 변환해줌
+#     return response
+
+
+
 def order_complete(request): # 자바스크립트를 사용할 시
     order_id = request.GET.get('order_id') # 시큐어 코딩 어떤 정보가 올지 모르니 한번 걸러주는 것 지금은 안씀
     # order = Order.objects.get(id=order_id)
@@ -64,6 +91,35 @@ class OrderCreateAjaxView(View): # 화면이 변환없이 자바스크립트로 
             cart.clear()
             data = {
                 "order_id": order.id
+            }
+            return JsonResponse(data)
+        else:
+            return JsonResponse({}, status=401)
+
+
+# 결제 정보 생성
+class OrderCheckoutAjaxView(View):
+    def post(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return JsonResponse({"authenticated":False}, status=403)
+
+        order_id = request.POST.get('order_id')
+        order = Order.objects.get(id=order_id)
+        amount = request.POST.get('amount')
+
+        try:
+            merchant_order_id = OrderTransaction.objects.create_new(
+                order=order,
+                amount=amount
+            )
+        except:
+            merchant_order_id = None
+
+
+        if merchant_order_id is not None:
+            data = {
+                "works": True,
+                "merchant_id": merchant_order_id
             }
             return JsonResponse(data)
         else:
